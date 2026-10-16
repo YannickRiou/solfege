@@ -87,7 +87,7 @@ export const EXERCISES = {
     },
     render: q => ({
       prompt: `Où est le ${noteName(q.item)} ?`,
-      body: `<div class="options">${q.options.map((s, i) => `<button class="option" data-input="staff" data-step="${s}" aria-label="Choix ${i + 1}">${staffSVG({ notes: [{ step: s, x: 60 }], clef: false, width: 120, label: `Choix ${i + 1}` })}</button>`).join('')}</div>`,
+      body: `<div class="options">${q.options.map((s, i) => `<button class="option" data-input="staff" data-step="${s}" aria-label="Choix ${i + 1}">${staffSVG({ notes: [{ step: s, x: 92 }], width: 130, label: `Choix ${i + 1}` })}</button>`).join('')}</div>`,
     }),
     input(q, el, root) {
       if (el.dataset.input !== 'staff') return null;
