@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Note à Note Developer Handbook</title>
+  <meta name="description" content="How Note à Note is built and how to change it: architecture, lessons, exercise types, styling, storage, tests and deployment.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+  <style>
+    /* Same tokens as the app (css/style.css), so the handbook looks like part of the project. */
+    :root {
+      --bg: #FFFFFF; --surface: #F3F4F6; --fg: #15171C; --muted: #5A606C; --border: #D8DBE1;
+      --accent: #2747C9; --warn-bg: #FBF3DB; --warn-fg: #5C4400;
+      --font: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111317; --surface: #1B1E24; --fg: #ECEDEF; --muted: #A2A7B1; --border: #2F333B;
+        --accent: #8EA2FF; --warn-bg: #3A3014; --warn-fg: #F3DFA2;
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16.5px; line-height: 1.6; }
+    .layout { max-width: 1080px; margin: 0 auto; padding: 32px max(16px, env(safe-area-inset-right, 0px)) 80px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+    nav { position: sticky; top: 24px; align-self: start; font-size: .9rem; }
+    nav p { font-weight: 700; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; color: var(--muted); }
+    nav ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 4px; }
+    nav a { color: var(--fg); text-decoration: none; }
+    nav a:hover { color: var(--accent); text-decoration: underline; }
+    main { min-width: 0; max-width: 72ch; }
+    header { margin-bottom: 40px; }
+    .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; font-weight: 700; color: var(--muted); margin: 0; }
+    h1 { font-size: 2.2rem; line-height: 1.15; margin: 4px 0 12px; text-wrap: balance; }
+    h2 { font-size: 1.45rem; margin: 56px 0 12px; padding-top: 16px; border-top: 1px solid var(--border); scroll-margin-top: 16px; }
+    h3 { font-size: 1.1rem; margin: 32px 0 8px; scroll-margin-top: 16px; }
+    p, ul, ol, table, pre { margin: 0 0 14px; }
+    li + li { margin-top: 4px; }
+    a { color: var(--accent); }
+    .lead { font-size: 1.1rem; color: var(--muted); }
+    code { font-family: var(--mono); font-size: .86em; background: var(--surface); padding: 1px 5px; border-radius: 4px; }
+    pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .table-wrap { overflow-x: auto; margin-bottom: 14px; }
+    table { border-collapse: collapse; width: 100%; font-size: .93rem; margin: 0; }
+    th, td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    td code { white-space: nowrap; }
+    .note { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 12px 16px; }
+    .note code { background: transparent; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li::before { content: "☐"; margin-right: 8px; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 20px; }
+      nav { position: static; border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#principles">Principles</a></li>
+      <li><a href="#files">Files</a></li>
+      <li><a href="#local">Running locally</a></li>
+      <li><a href="#notes">The note model</a></li>
+      <li><a href="#recipes">Recipes</a></li>
+      <li><a href="#tests">Tests</a></li>
+      <li><a href="#deploy">Deployment</a></li>
+      <li><a href="#pitfalls">Known pitfalls</a></li>
+      <li><a href="#ideas">Ideas</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header>
+      <p class="eyebrow">Note à Note · Developer handbook</p>
+      <h1>How the app works, and how to change it</h1>
+      <p class="lead">Everything you need to change Note à Note on your own. It assumes you can edit HTML, CSS and a little JavaScript. The app's interface is in French; this handbook and the code comments in it are in English.</p>
+      <p>Live site: <a href="https://yannickriou.github.io/solfege/">yannickriou.github.io/solfege</a> · Repository: <a href="https://github.com/YannickRiou/solfege">github.com/YannickRiou/solfege</a></p>
+    </header>
+
+    <h2 id="principles">1. Principles</h2>
+    <ul>
+      <li><strong>No build step, no dependencies.</strong> The browser loads <code>index.html</code>, <code>css/style.css</code> and the modules in <code>js/</code> as they are. What you see in the repository is exactly what gets published.</li>
+      <li><strong>Plain modern JavaScript</strong> (ES modules, <code>import</code>/<code>export</code>), no framework. Each screen is an HTML string injected into <code>&lt;main id="app"&gt;</code>.</li>
+      <li><strong>No data leaves the browser.</strong> No server, no accounts, no analytics.</li>
+      <li><strong>The curriculum is data.</strong> Adding a lesson means editing an array in <code>js/curriculum.js</code> and nothing else.</li>
+    </ul>
+
+    <h2 id="files">2. Files</h2>
+<pre><code>index.html            the single page: loads the fonts, the CSS and js/app.js
+css/style.css         all styling; colour variables at the top
+js/app.js             screens (home, session, result), session flow, events
+js/curriculum.js      the curriculum: units and lessons          ← most frequent edits
+js/exercises.js       the 8 exercise types                       ← to add a new type
+js/notation.js        note model, drawing of the staff and the keyboard
+js/scheduler.js       spaced repetition and random draws
+js/storage.js         saving progress (localStorage)
+js/audio.js           synthesised piano sound
+tests/solfege.test.js automated tests (node --test)
+docs/handbook.html    this document</code></pre>
+    <p>Module dependencies: <code>app</code> → <code>curriculum</code>, <code>exercises</code>, <code>scheduler</code>, <code>storage</code>; <code>exercises</code> → <code>notation</code>, <code>audio</code>. Only <code>app.js</code> touches the DOM when it loads. The other modules can be imported in Node, which is what makes them testable.</p>
+
+    <h2 id="local">3. Running locally</h2>
+<pre><code>python -m http.server 8000      # or: npm start</code></pre>
+    <p>Open <a href="http://localhost:8000">http://localhost:8000</a>. After a change, reload the page (Ctrl+Shift+R to bypass the cache).</p>
+    <p>To start from empty progress, use the <strong>Remettre à zéro</strong> button at the bottom of the home screen, or run this in the browser console: <code>localStorage.removeItem('solfege.progress')</code>.</p>
+
+    <h2 id="notes">4. The note model</h2>
+    <p>A note is a <strong>step</strong>: <code>octave × 7 + letter</code>, where letter 0 = do (C), 1 = ré (D) … 6 = si (B). Octave numbers follow the French convention: middle C is <strong>do3</strong> (C4 in English notation).</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Step</th><th>Note</th><th>English</th><th>Position on the treble staff</th></tr></thead>
+      <tbody>
+        <tr><td>28</td><td>do3 (middle C)</td><td>C4</td><td>first ledger line below the staff</td></tr>
+        <tr><td>29</td><td>ré3</td><td>D4</td><td>just below the bottom line</td></tr>
+        <tr><td>30</td><td>mi3</td><td>E4</td><td>bottom line</td></tr>
+        <tr><td>32</td><td>sol3</td><td>G4</td><td>2nd line (the one the clef curls around)</td></tr>
+        <tr><td>34</td><td>si3</td><td>B4</td><td>middle line</td></tr>
+        <tr><td>35</td><td>do4</td><td>C5</td><td>3rd space</td></tr>
+        <tr><td>38</td><td>fa4</td><td>F5</td><td>top line</td></tr>
+        <tr><td>40</td><td>la4</td><td>A5</td><td>first ledger line above the staff</td></tr>
+      </tbody>
+    </table></div>
+    <p>Useful helpers in <code>js/notation.js</code>: <code>noteName(28)</code> → <code>"do"</code>, <code>frName(28)</code> → <code>"do3"</code>, <code>midiOf(28)</code> → <code>60</code>, <code>letter(35)</code> → <code>0</code>.</p>
+    <p>The limits are constants: <code>STAFF_LOW</code>/<code>STAFF_HIGH</code> (notes that can be drawn on the staff) and <code>KEY_LOW</code>/<code>KEY_HIGH</code> (the 14 white keys of the on-screen keyboard, do3 to si4).</p>
+    <p>The two keyboard exercises <code>key</code> and <code>keyname</code> work on <strong>letters</strong> (0 to 6), so the octave doesn't matter. Every other exercise works on <strong>steps</strong>.</p>
+
+    <h2 id="recipes">5. Recipes</h2>
+
+    <h3 id="lesson">Add or change a lesson</h3>
+    <p>In <code>js/curriculum.js</code>, add an object to a unit's <code>lessons</code> array:</p>
+<pre><code>{ id: 's5', title: 'Les notes sur les lignes', types: ['name', 'place'], items: [30, 32, 34, 36, 38],
+  hint: 'Mi, sol, si, ré, fa : de bas en haut.' },</code></pre>
+    <p>Rules, all checked by <code>npm test</code>:</p>
+    <ul>
+      <li><code>id</code> must be unique. <strong>Never rename the id of a published lesson</strong>: users' saved progress refers to it.</li>
+      <li><code>types</code> are keys of <code>EXERCISES</code> (see the table below). All types in one lesson must use the same kind of items: steps or letters.</li>
+      <li><code>items</code>: at least 2 notes, within the limits (28 to 40 for steps, 0 to 6 for letters).</li>
+      <li><code>hint</code> is optional. It is shown under the question.</li>
+    </ul>
+    <p>The order of the file is the order of the path: a lesson unlocks when the previous one is finished. If you insert a lesson in the middle, it is locked for users who are already past that point until they finish it.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Type</th><th>What the learner does</th><th>Skill</th><th>Items</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>Sees a note on the staff, picks its name</td><td>read</td><td>steps</td></tr>
+        <tr><td><code>truefalse</code></td><td>“Is this note a sol?” Yes or no</td><td>read</td><td>steps</td></tr>
+        <tr><td><code>findstaff</code></td><td>Picks, among 3 staves, the one showing the requested note</td><td>read</td><td>steps</td></tr>
+        <tr><td><code>place</code></td><td>Places the requested note on the staff</td><td>read</td><td>steps</td></tr>
+        <tr><td><code>key</code></td><td>Sees a note name, taps the right key</td><td>key</td><td>letters</td></tr>
+        <tr><td><code>keyname</code></td><td>Sees a highlighted key, picks its name</td><td>key</td><td>letters</td></tr>
+        <tr><td><code>play</code></td><td>Sees a note on the staff, plays the exact key</td><td>play</td><td>steps</td></tr>
+        <tr><td><code>melody</code></td><td>Plays 4 notes from the staff in order</td><td>play</td><td>steps</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 id="unit">Add a unit</h3>
+    <p>Add an object <code>{ title, sub, lessons: [...] }</code> to <code>UNITS</code>. The unit number shown on the home screen is computed automatically.</p>
+
+    <h3 id="numbers">Change lesson length or points</h3>
+    <p>At the top of <code>js/app.js</code>: <code>QUESTIONS</code> (questions per lesson), <code>XP_PER_ANSWER</code>, and <code>PRACTICE_DAY</code> (how many free-practice answers count as a day for the streak).</p>
+
+    <h3 id="srs">Tune spaced repetition</h3>
+    <p>In <code>js/scheduler.js</code>, every (skill, note) pair has a weight that starts at 1. A wrong answer sets it to <code>weight × 2 + 1</code> (capped at <code>MAX</code>), a right answer to <code>weight × 0.7</code> (floored at <code>MIN</code>). Notes are drawn in proportion to their weight. To bring mistakes back faster, raise <code>MAX</code>; for more variety, narrow the gap between <code>MIN</code> and <code>MAX</code>.</p>
+
+    <h3 id="practice">How free practice works</h3>
+    <p>Free practice never ends. For each question, <code>app.js</code> picks a random lesson among the unlocked ones, then one of that lesson's exercise types, then a note according to the weights. It therefore grows on its own as the learner progresses. To open it to the whole curriculum from the start, replace <code>unlockedLessons()</code> with <code>ALL</code> in <code>newQuestion()</code>.</p>
+
+    <h3 id="exercise">Add an exercise type</h3>
+    <p><strong>1.</strong> In <code>js/exercises.js</code>, add an entry to <code>EXERCISES</code>:</p>
+<pre><code>octave: {
+  title: 'Grave ou aigu ?',        // shown under lesson titles on the home screen
+  skill: 'read',                   // 'read', 'key' or 'play': used by spaced repetition
+  items: 'step',                   // 'step' or 'letter' (0 to 6)
+  make: ({ lesson, pick }) =&gt; ({ item: pick() }),
+  render: q =&gt; ({
+    prompt: 'Ce do est-il grave ou aigu ?',
+    body: paper(staffSVG({ notes: [{ step: q.item }] }))
+      + `&lt;div class="choices two"&gt;
+           &lt;button class="choice" data-input="octave" data-v="0"&gt;Grave&lt;/button&gt;
+           &lt;button class="choice" data-input="octave" data-v="1"&gt;Aigu&lt;/button&gt;
+         &lt;/div&gt;`,
+  }),
+  input(q, el, root) {
+    if (el.dataset.input !== 'octave') return null;   // not our click: ignore it
+    const ok = (+el.dataset.v === 1) === (q.item &gt;= 35);
+    add(el, ok ? 'hit' : 'miss');
+    return { ok, msg: ok ? 'Exact.' : 'Regarde où se trouve la note par rapport à la clé.' };
+  },
+},</code></pre>
+    <p><strong>2.</strong> Use it in a lesson: <code>types: ['name', 'octave']</code>.</p>
+    <p><strong>3.</strong> Run <code>npm test</code>. The test “each type produces a displayable question” tries your exercise on every lesson that uses it.</p>
+    <p>The contract (also summarised at the top of <code>exercises.js</code>):</p>
+    <ul>
+      <li><code>make</code> receives <code>pick(exclude?)</code>, which draws a note from the lesson according to the weights. Put everything the display needs into the question object (options, sequence…).</li>
+      <li><code>render</code> returns the prompt and the HTML. <strong>Every clickable element carries <code>data-input</code></strong>: the app forwards those clicks to <code>input</code>.</li>
+      <li><code>input</code> returns <code>null</code> while the exercise is still going (multi-step exercises such as <code>place</code> or <code>melody</code>), otherwise <code>{ ok, msg }</code>. <code>msg</code> is shown after “Bravo !” or “Raté.”. To grade several notes at once, add <code>results: [{ item, ok }, …]</code>.</li>
+      <li><code>onKey</code> is optional and receives computer-keyboard events.</li>
+    </ul>
+    <p>Helpers already available: <code>staffSVG({ notes, zones, clef, width })</code>, <code>keyboardHTML({ mark, target, interactive })</code>, <code>nameChoices()</code>, <code>paper(svg)</code>, <code>add(el, 'hit' | 'miss')</code>, <code>tone(midi)</code>.</p>
+
+    <h3 id="style">Change the look</h3>
+    <p>Colours, font and corner radius are variables at the top of <code>css/style.css</code>. The <code>@media (prefers-color-scheme: dark)</code> block redefines the same variables for dark mode, so <strong>every new colour must be declared in both blocks</strong>.</p>
+    <p>The <code>--paper-*</code> and <code>--key-*</code> variables are for the staff and the keyboard, which stay light in both themes, like sheet music and a real piano.</p>
+    <p>Fonts: Atkinson Hyperlegible (text, designed for legibility) and Noto Music (treble clef), both loaded from Google Fonts in <code>index.html</code>.</p>
+
+    <h3 id="keyboard">Make the keyboard bigger</h3>
+    <p>Change <code>KEY_LOW</code> / <code>KEY_HIGH</code> in <code>js/notation.js</code>; key widths adapt. On a phone, more than 14 white keys become hard to tap.</p>
+
+    <h3 id="storage">Change the saved data</h3>
+    <p>Progress is a JSON object stored under the key <code>solfege.progress</code>:</p>
+<pre><code>{ v: 1, xp, streak, lastDay: 'YYYY-MM-DD', bestCombo,
+  lessons: { s1: { done: true, best: 9 } },
+  items: { 'read:30': { w: 2.4 } } }        // spaced-repetition weights</code></pre>
+    <ul>
+      <li><strong>Adding a field</strong>: add it to <code>blank()</code> in <code>js/storage.js</code>. Existing saves get it automatically with its default value.</li>
+      <li><strong>Changing the shape of an existing field</strong>: increment <code>SCHEMA</code> and write, inside <code>load()</code>, the conversion from the previous version.</li>
+    </ul>
+    <p class="note">Without that conversion, users lose their progress: a save from another schema version is ignored.</p>
+
+    <h2 id="tests">6. Tests</h2>
+<pre><code>npm test</code></pre>
+    <p>Node.js 20 or later, nothing to install. Covered automatically: note conversions, curriculum consistency, generation and rendering of every exercise in every lesson, spaced repetition, saving and the day streak.</p>
+    <p>Not covered, so check by hand before publishing a visible change:</p>
+    <ul class="checklist">
+      <li>On a phone, or in dev tools at 375 px wide: the keyboard and the 7 note buttons fit with no horizontal scrolling.</li>
+      <li>In dark mode: text is readable, the staff and keyboard stay light.</li>
+      <li>Each exercise type you touched: right answer, wrong answer, feedback shown, Continuer button.</li>
+      <li>Sound plays on the first click (Safari and iOS included).</li>
+      <li>After a reload, XP, streak and finished lessons are still there.</li>
+    </ul>
+
+    <h2 id="deploy">7. Deployment</h2>
+    <p>GitHub Pages serves the <code>main</code> branch, root folder (Settings → Pages). Every push to <code>main</code> republishes the site within a minute or two; progress is visible in the <strong>Actions</strong> tab (“pages build and deployment”).</p>
+    <p>The <code>.nojekyll</code> file turns off GitHub's Jekyll processing, so files are served as they are.</p>
+
+    <h2 id="pitfalls">8. Known pitfalls</h2>
+    <ul>
+      <li><strong>Blank page when opening the file directly</strong>: ES modules need a server (see <a href="#local">Running locally</a>).</li>
+      <li><strong>A change doesn't show up</strong>: browser cache. Press Ctrl+Shift+R, or wait for the deployment to finish.</li>
+      <li><strong>No sound</strong>: browsers block audio until the first click. On an iPhone, also check the silent switch.</li>
+      <li><strong>Lost progress</strong>: private browsing, or cleared site data. Progress belongs to one browser on one device.</li>
+      <li><strong>A mistake in <code>curriculum.js</code> breaks the whole site</strong>: run <code>npm test</code> before pushing.</li>
+    </ul>
+
+    <h2 id="ideas">9. Ideas</h2>
+    <ul>
+      <li>Bass clef: one more unit; needs a second clef drawing and shifted positions in <code>staffSVG</code>.</li>
+      <li>A “do ré mi” / “C D E” naming switch.</li>
+      <li>MIDI keyboard input (Web MIDI API, Chrome and Edge) or microphone pitch detection.</li>
+      <li>Sharps, flats and black keys.</li>
+      <li>Offline use (service worker).</li>
+    </ul>
+  </main>
+</div>
+</body>
+</html>

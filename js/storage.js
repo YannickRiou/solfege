@@ -1,5 +1,5 @@
 // Progression enregistrée dans le navigateur (localStorage), sur cet appareil uniquement.
-// Changer la forme des données ? Incrémenter SCHEMA et ajouter une migration (voir docs/HANDBOOK.md).
+// Changer la forme des données ? Incrémenter SCHEMA et ajouter une migration (voir docs/handbook.html).
 const KEY = 'solfege.progress';
 export const SCHEMA = 1;
 

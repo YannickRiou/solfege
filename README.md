@@ -57,4 +57,4 @@ GitHub Pages publie la branche `main` (dossier racine). Un `git push` sur `main`
 
 ## Modifier le projet
 
-Tout est expliqué dans le [handbook développeur](docs/HANDBOOK.md) : architecture, ajout d'une leçon ou d'un type d'exercice, style, stockage, tests et déploiement.
+Tout est expliqué dans le [handbook développeur](https://yannickriou.github.io/solfege/docs/handbook.html) (en anglais, source : [docs/handbook.html](docs/handbook.html)) : architecture, ajout d'une leçon ou d'un type d'exercice, style, stockage, tests et déploiement.
