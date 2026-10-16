@@ -1,0 +1,13 @@
+{
+  "name": "solfege",
+  "private": true,
+  "description": "Note à Note : apprendre les notes sur la portée puis au piano. Site statique, sans dépendance.",
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes serve@14 -l 8000 .",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
